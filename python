@@ -27,74 +27,65 @@ Usage: tit list [list/all]
 
 def add(command, options, _tit):
     """Creates a new item or list
-Usage: tit add [type] [name] [priority/description/text]
-    tit add item [name] [priority]      -- creates a new item
-    tit add list [name] [description]   -- creates a new list
-    tit add comment [item] [text]       -- adds a comment to an item
-    tit add help                        -- dislpays this helpful text"""
+Usage: tit add [list] [item]
+    tit add [item]           -- creates a new item
+    tit add [list] [item]    -- creates a new item in the list list
+    tit add list [list]      -- creates a new list
+    tit add help             -- dislpays this helpful text"""
 
-    if command['type'] == 'item':
-        if 'priority' in command.keys():
-            _tit.current_list.add(new_name=command['name'], new_priority=command['priority'])
+    if command['item'] and not 'list' in command.keys():
+        _tit.current_list.add(new_name=command['item'])
+        _tit.save()
+    elif command['list'] == 'list' and command['item']:
+        _tit.add(new_name=command['item'])
+        _tit.save()
+    elif command['item'] and command['list']:
+        if command['list'].isdigit():
+            _tit.find(id=command['list']).add(new_name=command['item'])
         else:
-            _tit.current_list.add(new_name=command['name'])
+            _tit.find(name=command['list']).add(new_name=command['item'])
 
-        print 'New item saved'
-    elif command['type'] == 'list':
-        if 'priority' in command.keys():
-            _tit.add(new_name=command['name'], new_description=command['priority'])
-        else:
-            _tit.add(new_name=command['name'])
-
-        print 'New list saved'
-    elif command['type'] == 'comment':
-        i = None
-
-        if command['name'].isdigit():
-            i = _tit.current_list.find(id=int(command['name']))
-        else:
-            i = _tit.current_list.find(name=command['name'])
-
-        i.add(new_text=command['priority'])
-
-        print 'New commend saved'
-
-    _tit.save()
+        _tit.save()
 
 def rm(command, options, _tit):
     """Removes an item or list
-Usage: tit rm [type] [item] [subitem]
-    tit rm item [item]                -- removes an item from the current list
-    tit rm comment [item] [comment]   -- removes a comment from an item
-    tit rm list [list]                -- removes a list
-    tit rm help                       -- displays this helpful text"""
+Usage: tit rm [list] [item]
+    tit rm [item]           -- removes an item
+    tit rm [list] [item]    -- removes and item from the list
+    tit rm list [list]      -- removes a list
+    tit rm help             -- displays this helpful text"""
 
-    # tit rm item [item]
-    if command['type'] == 'item':
+    if command['item'] and not 'list' in command.keys():
         if command['item'].isdigit():
-            _tit.current_list.rm(rm_id=int(command['item']))
+            _tit.current_list.rm(rm_id=command['item'])
         else:
-            _tit.current_list.rm(rm_id=int(command['item']))
-    # tit rm comment [item] [comment]
-    elif command['type'] == 'comment':
-        i = None
+            _tit.current_list.rm(rm_name=command['item'])
+        _tit.current_list.list()
+        _tit.save()
+    elif command['list'] == 'list' and command['item']:
         if command['item'].isdigit():
-            i = _tit.current_list.find(id=int(command['item']))
-        else:
-            i = _tit.current_list.find(name=command['item'])
-
-        if command['subitem'].isdigit() and i:
-            i.rm(rm_id=int(command['subitem']))
-        elif i:
-            i.rm(rm_text=command['subitem'])
-    # tit rm list [list]
-    elif command['type'] == 'list':
-        if command['item'].isdigit():
-            _tit.rm(rm_id=int(command['item']))
+            _tit.rm(rm_id=command['item'])
         else:
             _tit.rm(rm_name=command['item'])
+        _tit.list()
+        _tit.save()
+    elif command['item'] and command['list']:
+        l = None
+        i = None
 
-    _tit.save()
+        if command['list'].isdigit():
+            l = _tit.find(id=command['list'])
+        else:
+            l = _tit.find(name=command['list'])
+
+        if command['item'].isdigit():
+            i = l.find(id=command['item'])
+        else:
+            i = l.find(name=command['item'])
+
+        l.rm(rm_item=i)
+        l.list()
+        _tit.save()
 
 def switch(command, options, _tit):
     """Switches the current todo lists
@@ -129,41 +120,33 @@ _commands = {
         'min_arg_count': 0,
         'args': ['list'],
         'function': list,
-        'alias': 'ls',
     },
     'add': {
-        'min_arg_count': 2,
-        'args': ['type', 'name', '[priority]'],
+        'min_arg_count': 1,
+        'args': ['[list]', 'item', '[priority]'],
         'function': add,
     },
-    'remove': {
-        'min_arg_count': 2,
-        'args': ['type', 'item', '[subitem]'],
+    'rm': {
+        'min_arg_count': 1,
+        'args': ['[list]', 'item'],
         'function': rm,
-        'alias': 'rm',
-    },
-    'change': {
-        'min_arg_count': 3,
-        'args': ['type', 'item', '[subitem]', '[value]'],
     },
     'start': {
         'min_arg_count': 1,
-        'args': ['item'],
+        'args': ['[list]', 'item'],
     },
-    'finish': {
+    'fin': {
         'min_arg_count': 1,
-        'args': ['item'],
-        'alias': 'fin',
+        'args': ['[list]', 'item']
     },
     'pause': {
         'min_arg_count': 1,
-        'args': ['item'],
+        'args': ['[list]', 'item']
     },
     'switch': {
         'min_arg_count': 1,
         'args': ['list'],
-        'function': switch,
-        'alias': 'sw',
+        'function': switch
     },
 }
 
@@ -233,36 +216,26 @@ def get_arguments():
     if not len(args) > 0:
         parser.print_help()
         return None, None
-
-    cmd = None
-
-    for c in _commands.keys():
-        if 'alias' in _commands[c].keys() and \
-            args[0] == _commands[c]['alias']:
-            cmd = c
-
-    if not cmd and not args[0] in _commands.keys():
+    if not args[0] in _commands.keys():
         parser.print_help()
         return None, None
-    elif not cmd:
-        cmd = args[0]
 
     command = {
-        'command': cmd,
-        'function': _commands[cmd]['function']
+        'command': args[0],
+        'function': _commands[args[0]]['function'],
     }
 
     if len(args) > 1 and args[1] == 'help':
         print command['function'].__doc__
         return None, None
 
-    if not len(args) >= _commands[cmd]['min_arg_count']+1:
+    if not len(args) >= _commands[args[0]]['min_arg_count']+1:
         print command['function'].__doc__
         return None, None
 
     args_offset = 1
-    for i, arg in enumerate(_commands[cmd]['args']):
-        if _re_arg_is_optional.match(arg) is not None and len(args) - 1 < len(_commands[cmd]['args']):
+    for i, arg in enumerate(_commands[args[0]]['args']):
+        if _re_arg_is_optional.match(arg) is not None and len(args) - 1 < len(_commands[args[0]]['args']):
             args_offset -= 1
             continue
 
@@ -275,3 +248,4 @@ def get_arguments():
 
 if __name__ == '__main__':
     main()
+

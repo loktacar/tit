@@ -31,19 +31,23 @@ class tit:
                             i = None
 
                             if todo.nodeType == 1:
-                                i = item(todo.getAttribute('name'))
-                                i.id = int(todo.getAttribute('id'))
-                                i.priority = int(todo.getAttribute('priority'))
-                                if todo.hasChildNodes():
-                                    i.description = todo.firstChild.data
+
+                                comments = []
+                                for c in todo.childNodes:
+                                    if c.nodeType == 1:
+                                        comments.append(comment(int(c.getAttribute('id')), c.childNodes[0].data))
+
+                                id = int(todo.getAttribute('id'))
+                                priority = int(todo.getAttribute('priority'))
+                                name = todo.getAttribute('name')
+                                i = item(id, priority, name, comments=comments)
 
                                 items.append(i)
 
-                        l = list(child.getAttribute('name'), items=items)
-                        if child.getAttribute('id'):
-                            l.id = int(child.getAttribute('id'))
-                        if child.getAttribute('description'):
-                            l.description = child.getAttribute('description')
+                        id = int(child.getAttribute('id'))
+                        name = child.getAttribute('name')
+                        desc = child.getAttribute('description')
+                        l = list(id, name, description=desc, items=items)
 
                         l.sort()
                         t.add(new_list=l)
@@ -79,13 +83,20 @@ class tit:
                 item_xml.setAttribute('id', str(i.id))
                 item_xml.setAttribute('name', i.name)
                 item_xml.setAttribute('priority', str(i.priority))
-                item_xml.appendChild(xmldoc.createTextNode(i.description))
+
+                for c in i.comments:
+                    comment_xml = xmldoc.createElement('comment')
+                    comment_text_xml = xmldoc.createTextNode(c.text)
+                    comment_xml.setAttribute('id', str(c.id))
+                    comment_xml.appendChild(comment_text_xml)
+                    item_xml.appendChild(comment_xml)
+
                 list_xml.appendChild(item_xml)
             xmldoc.documentElement.appendChild(list_xml)
 
         xmldoc.writexml(codecs.open(filename, 'wb', 'utf-8'), encoding='utf-8')
 
-    def add(self, new_list=None, new_name=None):
+    def add(self, new_list=None, new_name=None, new_description=u''):
         if new_list and not new_name:
             if len(self.lists):
                 sorted(self.lists, key=lambda i: i.id)
@@ -94,7 +105,7 @@ class tit:
                 new_list.id = 0
             self.lists.append(new_list)
         elif not new_list and new_name:
-            self.add(new_list=list(new_name))
+            self.add(new_list=list(0, new_name, new_description))
 
     def find(self, name=None, id=None):
         if name:
@@ -130,19 +141,22 @@ class list:
     id = 0
     description = u''
 
-    def __init__(self, name, new_branch=False, branch_prefix=None, items=None):
+    def __init__(self, id, name, description=u'', new_branch=False, branch_prefix=None, items=[]):
+        self.id = id
         self.name = name
+        self.description = description
+        self.items = items
+
         if new_branch:
             self._git_branch = '%s%s%s' % (branch_prefix, '-' if branch_prefix else '', name)
-
-        if items:
-            self.items = items
 
     def __unicode__(self):
         return self.name
 
     def sort(self):
-        self.items.sort(key=lambda i: -1 * i.priority)
+        self.items.sort(key=lambda i: i.priority, reverse=True)
+        for i in self.items:
+            i.sort()
 
     def switch(self):
         """ This method switches git branches if possible """
@@ -157,12 +171,12 @@ class list:
         if current:
             output_string.append('$INFO---------- CURRENT ----------$CLEAR')
 
-        output_string.append('$ID#%s$CLEAR - $LIST%s$CLEAR: %s' % (self.id, self.name, self.description))
+        output_string.append('$ID#%s$CLEAR $LIST%s$CLEAR %s' % (self.id, self.name, self.description))
 
         for item in self.items:
             output_string.append('\t%s' % item.__unicode__())
-            if item.description:
-                output_string.append('\t\t%s' % item.description)
+            for c in item.comments:
+                output_string.append('\t\t$ID#%s$CLEAR %s' % (c.id, c.text))
 
         if current:
             output_string.append('$INFO---------- CURRENT ----------$CLEAR')
@@ -171,16 +185,13 @@ class list:
 
     def find(self, name=None, id=None):
         """ Finds an item in this list with specified name """
-        if name:
-            for item in self.items:
-                if item.name == name:
-                    return item
-        if id:
-            for item in self.items:
-                if item.id == int(id):
-                    return item
+        for item in self.items:
+            if name and item.name == name:
+                return item
+            if id and item.id == id:
+                return item
 
-    def add(self, new_item=None, new_name=None):
+    def add(self, new_item=None, new_name=None, new_priority=None):
         """ This method adds items to this list """
         if new_item:
             if len(self.items):
@@ -188,11 +199,12 @@ class list:
                 new_item.id = 1 + self.items[-1].id
             else:
                 new_item.id = 0
+
             self.items.append(new_item)
 
             self.sort()
         elif new_name:
-            self.add(new_item=item(new_name))
+            self.add(new_item=item(0, new_priority if new_priority else 2, new_name))
 
     def rm(self, rm_item=None, rm_name=None, rm_id=None):
         """ This method removes item from this list """
@@ -204,14 +216,54 @@ class list:
             self.rm(self.find(id=rm_id))
 
 class item:
-    """ This class defines todo list items"""
+    """ This class defines todo list items """
     name = u''
     priority = 2
     id = 0
-    description = u''
+    comments = []
 
-    def __init__(self, name):
+    def __init__(self, id, priority, name, comments=[]):
+        self.id = id
+        self.priority = priority
         self.name = name
+        self.comments = comments
 
     def __unicode__(self):
         return '$ID#%s$CLEAR $%sITEM-%s-$CLEAR $ITEM%s$CLEAR' % (self.id, self.priority, self.priority, self.name)
+
+    def sort(self):
+        self.comments.sort(key=lambda c: c.id, reverse=True)
+
+    def find(self, id=None, text=None):
+        for c in self.comments:
+            if id and c.id == id:
+                return c
+            elif text and c.text == text:
+                return c
+
+    def add(self, new_text=None, new_comment=None):
+        if new_comment:
+            if len(self.comments):
+                new_comment.id = self.comments[0].id
+            else:
+                new_comment.id = 0
+
+            self.comments.append(new_comment)
+            self.sort()
+        elif new_text:
+            self.add(new_comment=comment(0, new_text))
+
+    def rm(self, rm_id=None, rm_text=None):
+        if rm_id:
+            self.comments.remove(self.find(id=rm_id))
+        else:
+            self.comments.remove(self.find(text=rm_text))
+
+class comment:
+    """ This class defines comments for todo items """
+    text = u''
+    id = 0
+
+    def __init__(self, id, text):
+        self.id = id
+        self.text = text
