@@ -1,0 +1,8 @@
+tit
+
+tit is a command line todo list. Sooner rather than later it will have 
+integrated git support. So you'll be able to keep track of what you're doing
+and when you've finished an item you'll be able to commit your changes. 
+
+This project is still in very early alpha and will probably not work for 
+for some time. 
