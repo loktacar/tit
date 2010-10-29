@@ -57,7 +57,7 @@ Usage: tit add [type] [name] [priority/description/text]
 
         i.add(new_text=command['priority'])
 
-        print 'New commend saved'
+        print 'New comment saved'
 
     _tit.save()
 
@@ -110,7 +110,7 @@ Usage: tit switch [list]
         print 'Error finding list'
         return
 
-    _tit.current_list.list()
+    print format_output(_tit.current_list.list())
     _tit.save()
 
 _usage = u"""usage: %prog [command]
@@ -171,7 +171,7 @@ _todo_lists_file = '%s/.tit/todo_lists' % os.getenv('HOME')
 
 _re_arg_is_optional = re.compile(r"^\[.*\]$")
 
-_terminal_colors = {
+_term_col = {
     'black': 30,
     'red': 31,
     'green': 32,
@@ -184,15 +184,15 @@ _terminal_colors = {
 
 _formatting = {
     '$CLEAR': '\033[0m',
-    '$INFO': '\033[1;%dm' % _terminal_colors['yellow'],
-    '$ID': '\033[1;%dm' % _terminal_colors['cyan'],
-    '$LIST': '\033[1;%dm\033[1;4m' % _terminal_colors['green'],
-    '$0ITEM': '\033[1;%dm' % _terminal_colors['green'],
-    '$1ITEM': '\033[1;%dm' % _terminal_colors['green'],
-    '$2ITEM': '\033[1;%dm' % _terminal_colors['white'],
-    '$3ITEM': '\033[1;%dm' % _terminal_colors['yellow'],
-    '$4ITEM': '\033[1;%dm' % _terminal_colors['yellow'],
-    '$5ITEM': '\033[1;%dm' % _terminal_colors['red'],
+    '$INFO': '\033[1;%dm' % _term_col['yellow'],
+    '$ID': '\033[1;%dm' % _term_col['cyan'],
+    '$LIST': '\033[1;%dm\033[1;4m' % _term_col['green'],
+    '$0ITEM': '\033[1;%dm' % _term_col['green'],
+    '$1ITEM': '\033[1;%dm' % _term_col['green'],
+    '$2ITEM': '\033[1;%dm' % _term_col['white'],
+    '$3ITEM': '\033[1;%dm' % _term_col['yellow'],
+    '$4ITEM': '\033[1;%dm' % _term_col['yellow'],
+    '$5ITEM': '\033[1;%dm' % _term_col['red'],
     '$ITEM': '\033[1;4m',
 }
 

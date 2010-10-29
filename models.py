@@ -17,7 +17,9 @@ class tit:
         if not filename:
             filename = '%s/.tit/data.xml' % os.getenv('HOME')
 
-        xmldoc = minidom.parse(filename)
+        xml = open(filename, 'rb').read()
+
+        xmldoc = minidom.parseString(xml)
         t = tit()
 
         for rootNodes in xmldoc.childNodes:
@@ -28,13 +30,11 @@ class tit:
                     elif child.tagName == 'list' and child.getAttribute('name'):
                         items = []
                         for todo in child.childNodes:
-                            i = None
-
                             if todo.nodeType == 1:
-
                                 comments = []
+
                                 for c in todo.childNodes:
-                                    if c.nodeType == 1:
+                                    if c.nodeType == 1 and c.nodeName == 'comment':
                                         comments.append(comment(int(c.getAttribute('id')), c.childNodes[0].data))
 
                                 id = int(todo.getAttribute('id'))
@@ -108,14 +108,11 @@ class tit:
             self.add(new_list=list(0, new_name, new_description))
 
     def find(self, name=None, id=None):
-        if name:
-            for l in self.lists:
-                if l.name == name:
-                    return l
-        elif id:
-            for l in self.lists:
-                if l.id == int(id):
-                    return l
+        for l in self.lists:
+            if name and l.name == name:
+                return l
+            elif id is not None and l.id == int(id):
+                return l
 
     def rm(self, rm_list=None, rm_name=None, rm_id=None):
         if rm_list:
@@ -188,7 +185,7 @@ class list:
         for item in self.items:
             if name and item.name == name:
                 return item
-            if id and item.id == id:
+            if id is not None and item.id == int(id):
                 return item
 
     def add(self, new_item=None, new_name=None, new_priority=None):
@@ -236,7 +233,7 @@ class item:
 
     def find(self, id=None, text=None):
         for c in self.comments:
-            if id and c.id == id:
+            if id and c.id == int(id):
                 return c
             elif text and c.text == text:
                 return c
