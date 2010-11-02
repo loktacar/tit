@@ -239,8 +239,12 @@ Usage: tit pause [item]
 _usage = u"""usage: %prog [command]
 In this case command can be any of these commands:
     list - lists todo-items in the current list
-    add - adds todo-items and lists
-    rm - removes todo-items and lists
+    add - adds todo-items, comments and lists
+    remove - removes todo-items and lists
+    change - changes lists, todo-items and comments
+    start - starts a todo-item
+    pause - pauses/stops a todo-item
+    finish - todo-item is marked finished
     switch - switches the current list to another list
 
 For more information about the commands type '%prog [command] help'"""

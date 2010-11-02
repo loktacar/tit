@@ -2,7 +2,82 @@ tit
 
 tit is a command line todo list. Sooner rather than later it will have 
 integrated git support. So you'll be able to keep track of what you're doing
-and when you've finished an item you'll be able to commit your changes. 
+and when you've finished an item you'll be able to commit your changes.
 
 This project is still in very early alpha and will probably not work for 
-for some time. 
+for some time.
+
+$ tit --help
+Usage: tit [command]
+In this case command can be any of these commands:
+    list - lists todo-items in the current list
+    add - adds todo-items, comments and lists
+    remove - removes todo-items and lists
+    change - changes lists, todo-items and comments
+    start - starts a todo-item
+    pause - pauses/stops a todo-item
+    finish - todo-item is marked finished
+    switch - switches the current list to another list
+
+For more information about the commands type 'tit [command] help'
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  -f FILE, --file=FILE  xml data file
+
+$ tit list help
+Lists todo items
+Usage: tit list [list/all]
+    tit list                    -- displays the current todo list
+    tit list [list]             -- displays the todo list items in this list
+    tit list all                -- displays all items in all lists
+    tit list help               -- displays this helpful text
+
+$ tit add help
+Creates a new item or list
+Usage: tit add [type] [name] [priority/description/text]
+    tit add item [name] [priority]      -- creates a new item
+    tit add list [name] [description]   -- creates a new list
+    tit add comment [item] [text]       -- adds a comment to an item
+    tit add help                        -- dislpays this helpful text
+
+$ tit remove help
+Removes an item, list, or comment
+Usage: tit rm [type] [item] [subitem]
+    tit rm item [item]                -- removes an item from the current list
+    tit rm comment [item] [comment]   -- removes a comment from an item
+    tit rm list [list]                -- removes a list
+    tit rm help                       -- displays this helpful text
+
+$ tit change help
+Changes an item, list, or comment
+Usage: tit change [type] [item] [subitem] [value]
+    tit change item [item] [value]                -- changes the value of an item
+    tit change priority [item] [value]            -- changes the priority of an item
+    tit change comment [item] [comment] [value]   -- changes the comment to an item
+    tit change list [list] [value]                -- changes the name of a list
+    tit change description [list] [value]         -- changes the description of a list
+    tit change help                               -- displays this helpful text
+
+$ tit start help
+Starts an item in the active list
+Usage: tit start [item]
+    tit start help                               -- displays this helpful text
+
+$ tit pause help
+Pauses an item in the active list
+Usage: tit pause [item]
+    tit pause help                               -- displays this helpful text
+
+$ tit finish help
+Pauses an item in the active list
+Usage: tit pause [item]
+    tit pause help                               -- displays this helpful text
+
+$ tit switch help
+Switches the current todo lists
+Usage: tit switch [list]
+    tit switch [list]    -- switches to the list
+    tit switch help      -- displays this helpful text
+
