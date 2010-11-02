@@ -4,6 +4,8 @@ import subprocess
 import os
 from xml.dom import minidom, DOMException
 import codecs
+from datetime import datetime
+import time
 
 class tit:
     """ This class controls all lists and items """
@@ -32,15 +34,18 @@ class tit:
                         for todo in child.childNodes:
                             if todo.nodeType == 1:
                                 comments = []
+                                log_items = []
 
                                 for c in todo.childNodes:
                                     if c.nodeType == 1 and c.nodeName == 'comment':
                                         comments.append(comment(int(c.getAttribute('id')), c.childNodes[0].data))
+                                    elif c.nodeType == 1 and c.nodeName == 'log_item':
+                                        log_items.append(log_item(c.getAttribute('type'), time=datetime.strptime(c.getAttribute('time'), '%a %b %d %H:%M:%S %Y')))
 
                                 id = int(todo.getAttribute('id'))
                                 priority = int(todo.getAttribute('priority'))
                                 name = todo.getAttribute('name')
-                                i = item(id, priority, name, comments=comments)
+                                i = item(id, priority, name, comments=comments, log=log_items)
 
                                 items.append(i)
 
@@ -91,6 +96,12 @@ class tit:
                     comment_xml.appendChild(comment_text_xml)
                     item_xml.appendChild(comment_xml)
 
+                for li in i.log:
+                    log_xml = xmldoc.createElement('log_item')
+                    log_xml.setAttribute('type', li.type)
+                    log_xml.setAttribute('time', li.time.strftime('%a %b %d %H:%M:%S %Y'))
+                    item_xml.appendChild(log_xml)
+
                 list_xml.appendChild(item_xml)
             xmldoc.documentElement.appendChild(list_xml)
 
@@ -119,7 +130,7 @@ class tit:
             self.lists.remove(rm_list)
         elif rm_name:
             self.rm(rm_list=self.find(name=rm_name))
-        elif rm_id:
+        elif rm_id is not None:
             self.rm(rm_list=self.find(id=rm_id))
 
     def list(self):
@@ -129,6 +140,15 @@ class tit:
             output_string.append(l.list(current= l==self.current_list))
 
         return '\n\n'.join(output_string)
+
+    def change(self, value, ch_list=None, ch_name=None, ch_id=None):
+        """ This method changes a list """
+        if ch_list:
+            ch_list.name = value
+        elif ch_name:
+            self.change(value, ch_list=self.find(name=ch_name))
+        elif ch_id is not None:
+            self.change(value, ch_list=self.find(id=int(ch_id)))
 
 class list:
     """ This class defines todo lists"""
@@ -208,9 +228,18 @@ class list:
         if rm_item:
             self.items.remove(rm_item)
         elif rm_name:
-            self.rm(self.find(name=rm_name))
-        elif rm_id:
-            self.rm(self.find(id=rm_id))
+            self.rm(rm_item=self.find(name=rm_name))
+        elif rm_id is not None:
+            self.rm(rm_item=self.find(id=rm_id))
+
+    def change(self, value, ch_item=None, ch_name=None, ch_id=None):
+        """ This method changes an item in this list """
+        if ch_item:
+            ch_item.name = value
+        elif ch_name:
+            self.change(value, ch_item=self.find(name=ch_name))
+        elif ch_id is not None:
+            self.change(value, ch_item=self.find(id=ch_id))
 
 class item:
     """ This class defines todo list items """
@@ -218,22 +247,39 @@ class item:
     priority = 2
     id = 0
     comments = []
+    log = []
+    created = None
+    finished = False
 
-    def __init__(self, id, priority, name, comments=[]):
+    def __init__(self, id, priority, name, comments=[], log=[]):
         self.id = id
         self.priority = priority
         self.name = name
         self.comments = comments
+        self.created = datetime.now()
+        self.log = []
+        for li in log:
+            self.add_to_log(li)
 
     def __unicode__(self):
-        return '$ID#%s$CLEAR $%sITEM-%s-$CLEAR $ITEM%s$CLEAR' % (self.id, self.priority, self.priority, self.name)
+        if not self.finished:
+            return '$ID#%s$CLEAR $%sITEM-%s-$CLEAR $ITEM%s$CLEAR' % \
+                    (self.id, \
+                    self.priority, \
+                    self.priority, \
+                    self.name)
+        else:
+            return '$FINISHED#%s -%s- %s$CLEAR' % \
+                    (self.id, \
+                    self.priority, \
+                    self.name)
 
     def sort(self):
-        self.comments.sort(key=lambda c: c.id, reverse=True)
+        self.comments.sort(key=lambda c: c.id if not self.finished else -c.id, reverse=True)
 
     def find(self, id=None, text=None):
         for c in self.comments:
-            if id and c.id == int(id):
+            if id is not None and c.id == int(id):
                 return c
             elif text and c.text == text:
                 return c
@@ -241,7 +287,7 @@ class item:
     def add(self, new_text=None, new_comment=None):
         if new_comment:
             if len(self.comments):
-                new_comment.id = self.comments[0].id
+                new_comment.id = self.comments[0].id + 1
             else:
                 new_comment.id = 0
 
@@ -251,10 +297,45 @@ class item:
             self.add(new_comment=comment(0, new_text))
 
     def rm(self, rm_id=None, rm_text=None):
-        if rm_id:
+        if rm_id is not None:
             self.comments.remove(self.find(id=rm_id))
         else:
             self.comments.remove(self.find(text=rm_text))
+
+    def change(self, value, ch_comment=None, ch_text=None, ch_id=None):
+        """ This method changes the text of a comment in this item """
+        if ch_comment:
+            ch_comment.text = value
+        elif ch_text:
+            self.change(value, ch_comment=self.find(text=ch_text))
+        elif ch_id is not None:
+            self.change(value, ch_comment=self.find(id=int(ch_id)))
+
+    def start(self):
+        """ This method adds a start log_item to the log """
+        if not len(self.log) or not self.log[-1].type == 'start':
+            self.log.append(log_item('start'))
+            if self.finished:
+                self.finished = False
+
+    def pause(self):
+        """ This method adds a pause log_item to the log """
+        if len(self.log) and self.log[-1] == 'start':
+            self.log.append(log_item('pause'))
+
+    def finish(self):
+        """ this method adds a finish log_item to the log """
+        self.log.append(log_item('finish'))
+        self.finished = True
+
+    def add_to_log(self, li):
+        """ This method adds a log_item to this item """
+        self.log.append(li)
+
+        if li.type == 'finish':
+            self.finished = True
+        elif li.type == 'start':
+            self.finished = False
 
 class comment:
     """ This class defines comments for todo items """
@@ -264,3 +345,18 @@ class comment:
     def __init__(self, id, text):
         self.id = id
         self.text = text
+
+log_types = ['start', 'pause', 'finish']
+
+class log_item:
+    """ This class defines the starting and stopping of todo items """
+    type = None
+    time = None
+
+    def __init__(self, type, time=None):
+        if type in log_types:
+            self.type = type
+            if time is not None:
+                self.time = time
+            else:
+                self.time = datetime.now()

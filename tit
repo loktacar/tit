@@ -8,20 +8,20 @@ import re
 from models import tit
 
 def list(command, options, _tit):
-    """Lists todo items 
+    """Lists todo items
 Usage: tit list [list/all]
     tit list                    -- displays the current todo list
-    tit list [list]        -- displays the todo list items in this list
+    tit list [list]             -- displays the todo list items in this list
     tit list all                -- displays all items in all lists
     tit list help               -- displays this helpful text"""
 
-    if command['list'] and not command['list'] == 'all':
+    if command['list'] == 'all' or command['list'] == 'a':
+        print format_output(_tit.list())
+    elif command['list']:
         if command['list'].isdigit():
             print format_output(_tit.find(id=command['list']).list())
         else:
             print format_output(_tit.find(name=command['list']).list())
-    elif command['list'] and command['list'] == 'all':
-        print format_output(_tit.list())
     else:
         print format_output(_tit.current_list.list())
 
@@ -33,21 +33,23 @@ Usage: tit add [type] [name] [priority/description/text]
     tit add comment [item] [text]       -- adds a comment to an item
     tit add help                        -- dislpays this helpful text"""
 
-    if command['type'] == 'item':
+    if command['type'] == 'item' or command['type'] == 'i':
         if 'priority' in command.keys():
             _tit.current_list.add(new_name=command['name'], new_priority=command['priority'])
         else:
             _tit.current_list.add(new_name=command['name'])
 
         print 'New item saved'
-    elif command['type'] == 'list':
+        print format_output(_tit.current_list.list())
+    elif command['type'] == 'list' or command['type'] == 'l':
         if 'priority' in command.keys():
             _tit.add(new_name=command['name'], new_description=command['priority'])
         else:
             _tit.add(new_name=command['name'])
 
         print 'New list saved'
-    elif command['type'] == 'comment':
+        print format_output(_tit.list())
+    elif command['type'] == 'comment' or command['type'] == 'c':
         i = None
 
         if command['name'].isdigit():
@@ -58,11 +60,12 @@ Usage: tit add [type] [name] [priority/description/text]
         i.add(new_text=command['priority'])
 
         print 'New comment saved'
+        print format_output(_tit.current_list.list())
 
-    _tit.save()
+    _tit.save(filename=options.file)
 
 def rm(command, options, _tit):
-    """Removes an item or list
+    """Removes an item, list, or comment
 Usage: tit rm [type] [item] [subitem]
     tit rm item [item]                -- removes an item from the current list
     tit rm comment [item] [comment]   -- removes a comment from an item
@@ -70,13 +73,16 @@ Usage: tit rm [type] [item] [subitem]
     tit rm help                       -- displays this helpful text"""
 
     # tit rm item [item]
-    if command['type'] == 'item':
+    if command['type'] == 'item' or command['type'] == 'i':
         if command['item'].isdigit():
             _tit.current_list.rm(rm_id=int(command['item']))
         else:
-            _tit.current_list.rm(rm_id=int(command['item']))
+            _tit.current_list.rm(rm_name=command['item'])
+
+        print 'Item removed'
+        print format_output(_tit.current_list.list())
     # tit rm comment [item] [comment]
-    elif command['type'] == 'comment':
+    elif command['type'] == 'comment' or command['type'] == 'c':
         i = None
         if command['item'].isdigit():
             i = _tit.current_list.find(id=int(command['item']))
@@ -87,14 +93,26 @@ Usage: tit rm [type] [item] [subitem]
             i.rm(rm_id=int(command['subitem']))
         elif i:
             i.rm(rm_text=command['subitem'])
-    # tit rm list [list]
-    elif command['type'] == 'list':
-        if command['item'].isdigit():
-            _tit.rm(rm_id=int(command['item']))
-        else:
-            _tit.rm(rm_name=command['item'])
 
-    _tit.save()
+        print 'Comment removed'
+        print format_output(_tit.current_list.list())
+    # tit rm list [list]
+    elif command['type'] == 'list' or command['type'] == 'l':
+        l = None
+        if command['item'].isdigit():
+            l = _tit.find(id=int(command['item']))
+        else:
+            l = _tit.find(name=command['item'])
+
+        if l == _tit.current_list:
+            _tit.current_list = None or _tit.lists[0]
+
+        _tit.rm(rm_list=l)
+
+        print 'List removed'
+        print format_output(_tit.list())
+
+    _tit.save(filename=options.file)
 
 def switch(command, options, _tit):
     """Switches the current todo lists
@@ -111,7 +129,112 @@ Usage: tit switch [list]
         return
 
     print format_output(_tit.current_list.list())
-    _tit.save()
+    _tit.save(filename=options.file)
+
+def change(command, options, _tit):
+    """Changes an item, list, or comment
+Usage: tit change [type] [item] [subitem] [value]
+    tit change item [item] [value]                -- changes the value of an item
+    tit change priority [item] [value]            -- changes the priority of an item
+    tit change comment [item] [comment] [value]   -- changes the comment to an item
+    tit change list [list] [value]                -- changes the name of a list
+    tit change description [list] [value]         -- changes the description of a list
+    tit change help                               -- displays this helpful text"""
+
+    # tit change item [item] [value]
+    if command['type'] == 'item' or command['type'] == 'i':
+        if command['item'].isdigit():
+            _tit.current_list.change(command['subitem'], ch_id=int(command['item']))
+        else:
+            _tit.current_list.change(command['subitem'], ch_name=command['item'])
+
+        print 'Item changed'
+        print format_output(_tit.current_list.list())
+    # tit change priority [item] [value]
+    if command['type'] == 'priority' or command['type'] == 'p':
+        if command['item'].isdigit():
+            _tit.current_list.find(id=int(command['item'])).priority = int(command['subitem'])
+        else:
+            _tit.current_list.find(name=command['item']).priority = int(command['subitem'])
+
+        print 'Priority changed'
+        print format_output(_tit.current_list.list())
+    # tit change comment [item] [comment] [value]
+    if command['type'] == 'comment' or command['type'] == 'c':
+        i = None
+        if command['item'].isdigit():
+            i = _tit.current_list.find(id=int(command['item']))
+        else:
+            i = _tit.current_list.find(name=command['item'])
+
+        if i is not None:
+            if command['subitem'].isdigit():
+                i.change(command['value'], ch_id=int(command['subitem']))
+            else:
+                print "command['subitem'] is not a digit"
+                i.change(command['value'], ch_text=command['subitem'])
+
+        print 'Comment changed'
+        print format_output(_tit.current_list.list())
+    # tit change list [list] [value]
+    if command['type'] == 'list' or command['type'] == 'l':
+        if command['item'].isdigit():
+            _tit.change(command['subitem'], ch_id=int(command['item']))
+        else:
+            _tit.change(command['subitem'], ch_name=command['item'])
+
+        print 'List changed'
+        print format_output(_tit.list())
+    # tit change description [list] [value]
+    if command['type'] == 'list' or command['type'] == 'd':
+        if command['item'].isdigit():
+            _tit.find(id=int(command['item'])).description = command['subitem']
+        else:
+            _tit.change(name=command['item']).description = command['subitem']
+
+        print 'Description changed'
+        print format_output(_tit.list())
+
+    _tit.save(filename=options.file)
+
+def start(command, options, _tit):
+    """Starts an item in the active list
+Usage: tit start [item]
+    tit start help                               -- displays this helpful text"""
+
+    if command['item'].isdigit():
+        _tit.current_list.find(id=int(command['item'])).start()
+    else:
+        _tit.current_list.find(name=command['item']).start()
+
+    print format_output(_tit.current_list.list())
+    _tit.save(filename=options.file)
+
+def pause(command, options, _tit):
+    """Pauses an item in the active list
+Usage: tit pause [item]
+    tit pause help                               -- displays this helpful text"""
+
+    if command['item'].isdigit():
+        _tit.current_list.find(id=int(command['item'])).pause()
+    else:
+        _tit.current_list.find(name=command['item']).puase()
+
+    print format_output(_tit.current_list.list())
+    _tit.save(filename=options.file)
+
+def finish(command, options, _tit):
+    """Pauses an item in the active list
+Usage: tit pause [item]
+    tit pause help                               -- displays this helpful text"""
+
+    if command['item'].isdigit():
+        _tit.current_list.find(id=int(command['item'])).finish()
+    else:
+        _tit.current_list.find(name=command['item']).finish()
+
+    print format_output(_tit.current_list.list())
+    _tit.save(filename=options.file)
 
 _usage = u"""usage: %prog [command]
 In this case command can be any of these commands:
@@ -143,21 +266,27 @@ _commands = {
         'alias': 'rm',
     },
     'change': {
-        'min_arg_count': 3,
+        'min_arg_count': 2,
         'args': ['type', 'item', '[subitem]', '[value]'],
+        'function': change,
+        'alias': 'ch',
     },
     'start': {
         'min_arg_count': 1,
         'args': ['item'],
+        'function': start,
     },
     'finish': {
         'min_arg_count': 1,
         'args': ['item'],
+        'function': finish,
         'alias': 'fin',
     },
     'pause': {
         'min_arg_count': 1,
         'args': ['item'],
+        'function': pause,
+        'alias': 'pau',
     },
     'switch': {
         'min_arg_count': 1,
@@ -194,6 +323,7 @@ _formatting = {
     '$4ITEM': '\033[1;%dm' % _term_col['yellow'],
     '$5ITEM': '\033[1;%dm' % _term_col['red'],
     '$ITEM': '\033[1;4m',
+    '$FINISHED': '\033[1;30m',
 }
 
 def format_output(string):
@@ -208,14 +338,13 @@ def main():
     if command is None and options is None:
         return
 
-    if False and options['file']:    # Change this when I figure out why options['file'] throws an AttributeError
-        _tit = tit.load(options['file'])
+    if options.file is not None:
+        _tit = tit.load(options.file)
     else:
         _tit = tit.load()
 
     # create ~/.tit if it doesn't exists
-    # also create ~/.tit/todo_lists
-    # read ~/.tit/current to see what list is currently in use
+    # also create ~/.tit/data.xml
 
     arguments = (command, options, _tit)
     if 'function' in command.keys():
@@ -247,6 +376,10 @@ def get_arguments():
     elif not cmd:
         cmd = args[0]
 
+    if not 'function' in _commands[cmd].keys():
+        print 'Function not implemented yet'
+        parser.print_help()
+
     command = {
         'command': cmd,
         'function': _commands[cmd]['function']
@@ -262,7 +395,7 @@ def get_arguments():
 
     args_offset = 1
     for i, arg in enumerate(_commands[cmd]['args']):
-        if _re_arg_is_optional.match(arg) is not None and len(args) - 1 < len(_commands[cmd]['args']):
+        if _re_arg_is_optional.match(arg) is not None and i >= len(args) - 1:
             args_offset -= 1
             continue
 
