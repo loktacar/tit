@@ -2,10 +2,9 @@
 
 import subprocess
 import os
-from xml.dom import minidom, DOMException
+from xml.dom import minidom
 import codecs
-from datetime import datetime
-import time
+from datetime import datetime, timedelta
 
 class tit:
     """ This class controls all lists and items """
@@ -21,10 +20,14 @@ class tit:
 
         xml = open(filename, 'rb').read()
 
-        xmldoc = minidom.parseString(xml)
+        if len(xml) > 0:
+            xmldoc = minidom.parseString(xml)
+        else:
+            xmldoc = None
+
         t = tit()
 
-        for rootNodes in xmldoc.childNodes:
+        for rootNodes in [] if xmldoc is None else xmldoc.childNodes:
             for child in rootNodes.childNodes:
                 if child.nodeType == 1:
                     if child.tagName == 'current' and child.getAttribute('list'):
@@ -40,7 +43,7 @@ class tit:
                                     if c.nodeType == 1 and c.nodeName == 'comment':
                                         comments.append(comment(int(c.getAttribute('id')), c.childNodes[0].data))
                                     elif c.nodeType == 1 and c.nodeName == 'log_item':
-                                        log_items.append(log_item(c.getAttribute('type'), time=datetime.strptime(c.getAttribute('time'), '%a %b %d %H:%M:%S %Y')))
+                                        log_items.append(log_item(c.getAttribute('type'), time=datetime.strptime(c.getAttribute('time'), '%Y-%m-%dT%H:%M:%S.%f')))
 
                                 id = int(todo.getAttribute('id'))
                                 priority = int(todo.getAttribute('priority'))
@@ -54,7 +57,6 @@ class tit:
                         desc = child.getAttribute('description')
                         l = list(id, name, description=desc, items=items)
 
-                        l.sort()
                         t.add(new_list=l)
 
         current_list_found = False
@@ -62,9 +64,6 @@ class tit:
             if l.name == t.current_list:
                 t.current_list = l
                 current_list_found = True
-
-        if not current_list_found:
-            raise DOMException('test')
 
         return t
 
@@ -99,7 +98,7 @@ class tit:
                 for li in i.log:
                     log_xml = xmldoc.createElement('log_item')
                     log_xml.setAttribute('type', li.type)
-                    log_xml.setAttribute('time', li.time.strftime('%a %b %d %H:%M:%S %Y'))
+                    log_xml.setAttribute('time', li.time.isoformat())
                     item_xml.appendChild(log_xml)
 
                 list_xml.appendChild(item_xml)
@@ -115,6 +114,7 @@ class tit:
             else:
                 new_list.id = 0
             self.lists.append(new_list)
+            self.current_list = new_list
         elif not new_list and new_name:
             self.add(new_list=list(0, new_name, new_description))
 
@@ -133,11 +133,11 @@ class tit:
         elif rm_id is not None:
             self.rm(rm_list=self.find(id=rm_id))
 
-    def list(self):
+    def list(self, finished=False):
         output_string = []
 
         for l in self.lists:
-            output_string.append(l.list(current= l==self.current_list))
+            output_string.append(l.list(current=l==self.current_list, finished=finished))
 
         return '\n\n'.join(output_string)
 
@@ -171,7 +171,20 @@ class list:
         return self.name
 
     def sort(self):
-        self.items.sort(key=lambda i: i.priority, reverse=True)
+        # Split the list into active and finished items
+        active = self.find(key=lambda i: not i.finished)
+        finished = self.find(key=lambda i: i.finished)
+
+        # Sort each part, by different keys
+        active.sort(key=lambda i: i.id)
+        finished.sort(key=lambda i: i.id, reverse=True)
+
+        # Append the items in finished to the active items
+        self.items = active + finished
+
+        # And that's the sorted list everybody, I'll be here all week
+
+        # Also sort the comments for each item while you're at it
         for i in self.items:
             i.sort()
 
@@ -180,8 +193,11 @@ class list:
         if self._git_branch:
             p = subprocess.Popen('git checkout %s' % self._git_branch)
 
-    def list(self, current=False):
+    def list(self, current=False, finished=False):
         """ This method lists the items in this list """
+
+        # First, let's please sort this list. It's rediculus
+        self.sort()
 
         output_string = []
 
@@ -190,18 +206,31 @@ class list:
 
         output_string.append('$ID#%s$CLEAR $LIST%s$CLEAR %s' % (self.id, self.name, self.description))
 
-        for item in self.items:
+        for item in self.find(key=lambda i: not i.finished or finished):
             output_string.append('\t%s' % item.__unicode__())
             for c in item.comments:
-                output_string.append('\t\t$ID#%s$CLEAR %s' % (c.id, c.text))
+                if not item.finished:
+                    output_string.append('\t\t$ID#%s$CLEAR %s' % (c.id, c.text))
+                else:
+                    output_string.append('\t\t$FINISHED#%s %s$CLEAR' % (c.id, c.text))
 
         if current:
             output_string.append('$INFO---------- CURRENT ----------$CLEAR')
 
         return '\n'.join(output_string)
 
-    def find(self, name=None, id=None):
+    def find(self, name=None, id=None, key=None):
         """ Finds an item in this list with specified name """
+
+        if key is not None:
+            selected_items = []
+
+            for item in self.items:
+                if key(item):
+                    selected_items.append(item)
+
+            return selected_items
+
         for item in self.items:
             if name and item.name == name:
                 return item
@@ -243,13 +272,6 @@ class list:
 
 class item:
     """ This class defines todo list items """
-    name = u''
-    priority = 2
-    id = 0
-    comments = []
-    log = []
-    created = None
-    finished = False
 
     def __init__(self, id, priority, name, comments=[], log=[]):
         self.id = id
@@ -257,21 +279,47 @@ class item:
         self.name = name
         self.comments = comments
         self.created = datetime.now()
-        self.log = []
-        for li in log:
-            self.add_to_log(li)
+        self.log = log
+        self.total_time = timedelta()
+        self.finished = False
+        self.current = False
+
+        if self.log is not None and len(self.log) > 0:
+            self.log.sort(key=lambda l: l.time)
+
+            for i, li in enumerate(self.log):
+                if li.type == 'finish':
+                    self.finished = True
+                    self.current = False
+                elif li.type == 'start':
+                    self.finished = False
+                    self.current = True
+                elif li.type == 'pause':
+                    self.current = False
+
+                if (li.type == 'pause' or li.type == 'finish') \
+                        and len(self.log) and self.log[i-1].type == 'start':
+                    self.total_time += li.time - self.log[i-1].time
+
+        self.sort()
 
     def __unicode__(self):
         if not self.finished:
-            return '$ID#%s$CLEAR $%sITEM-%s-$CLEAR $ITEM%s$CLEAR' % \
+            return '$ID#%s$CLEAR ' \
+                    '$%sITEM-%s-$CLEAR ' \
+                    '$TIME%s$CLEAR ' \
+                    '%s$ITEM%s$CLEAR' % \
                     (self.id, \
                     self.priority, \
                     self.priority, \
+                    str(self.total_time).split('.')[0], \
+                    '$CURRENT' if self.current else '', \
                     self.name)
         else:
-            return '$FINISHED#%s -%s- %s$CLEAR' % \
+            return '$FINISHED#%s -%s- %s %s$CLEAR' % \
                     (self.id, \
                     self.priority, \
+                    str(self.total_time).split('.')[0], \
                     self.name)
 
     def sort(self):
@@ -313,20 +361,37 @@ class item:
 
     def start(self):
         """ This method adds a start log_item to the log """
-        if not len(self.log) or not self.log[-1].type == 'start':
+
+        # Don't start if this item is currenly started
+        if len(self.log) and not self.log[-1].type == 'start' \
+                or not len(self.log):
             self.log.append(log_item('start'))
-            if self.finished:
-                self.finished = False
+            self.finished = False
+            self.current = True
 
     def pause(self):
         """ This method adds a pause log_item to the log """
-        if len(self.log) and self.log[-1] == 'start':
-            self.log.append(log_item('pause'))
+
+        # Only pause if the item is currently started
+        if len(self.log) and self.log[-1].type == 'start':
+            t = datetime.now()
+            self.total_time += t - self.log[-1].time
+
+            self.log.append(log_item(type='pause', time=t))
+
+            self.current = False
 
     def finish(self):
         """ this method adds a finish log_item to the log """
+
+        # Check if item is currently started
+        if len(self.log) and self.log[-1].type == 'start':
+            t = datetime.now()
+            self.total_time += t - self.log[-1].time
+
         self.log.append(log_item('finish'))
         self.finished = True
+        self.current = False
 
     def add_to_log(self, li):
         """ This method adds a log_item to this item """
@@ -334,8 +399,16 @@ class item:
 
         if li.type == 'finish':
             self.finished = True
+            self.current = False
         elif li.type == 'start':
             self.finished = False
+            self.current = True
+        elif li.type == 'pause':
+            self.current = False
+
+        if (li.type == 'pause' or li.type == 'finish') \
+                and len(self.log) and self.log[-1].type == 'start':
+            self.total_time += li.time - self.log[-1].time
 
 class comment:
     """ This class defines comments for todo items """
