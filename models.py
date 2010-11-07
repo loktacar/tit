@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import subprocess
 import os
-from xml.dom import minidom
 import codecs
 from datetime import datetime, timedelta
 
@@ -156,8 +154,7 @@ class list:
 
     def switch(self):
         """ This method switches git branches if possible """
-        if self._git_branch:
-            p = subprocess.Popen('git checkout %s' % self._git_branch)
+        pass
 
     def list(self, current=False, finished=False):
         """ This method lists the items in this list """
