@@ -35,21 +35,26 @@ Usage: tit add [type] [name] [priority/description/text]
 
     if command['type'] == 'item' or command['type'] == 'i':
         if 'priority' in command.keys():
-            _tit.current_list.add(new_name=command['name'], new_priority=command['priority'])
+            _tit.current_list.add( \
+                    new_name=command['name'].decode('utf-8'), \
+                    new_priority=command['priority'].decode('utf-8'))
         else:
-            _tit.current_list.add(new_name=command['name'])
+            _tit.current_list.add( \
+                    new_name=command['name'].decode('utf-8'))
 
         print 'New item saved'
         print format_output(_tit.current_list.list(finished=options.finished))
     elif command['type'] == 'list' or command['type'] == 'l':
         if 'priority' in command.keys():
-            _tit.add(new_name=command['name'], new_description=command['priority'])
+            _tit.add( \
+                    new_name=command['name'].decode('utf-8'), \
+                    new_description=command['priority'].decode('utf-8'))
         else:
-            _tit.add(new_name=command['name'])
+            _tit.add(new_name=command['name'].decode('utf-8'))
 
         print 'New list saved'
         if _tit.find(name=command['name']) == _tit.current_list:
-            print format_output(_tit.current_list.list(finished=options.finished));
+            print format_output(_tit.current_list.list(finished=options.finished))
         else:
             print format_output(_tit.list(finished=options.finished))
     elif command['type'] == 'comment' or command['type'] == 'c':
@@ -58,10 +63,10 @@ Usage: tit add [type] [name] [priority/description/text]
         if command['name'].isdigit():
             i = _tit.current_list.find(id=int(command['name']))
         else:
-            i = _tit.current_list.find(name=command['name'])
+            i = _tit.current_list.find(name=command['name'].decode('utf-8'))
 
         if i is not None:
-            i.add(new_text=command['priority'])
+            i.add(new_text=command['priority'].decode('utf-8'))
             print 'New comment saved'
         else:
             print 'Item not found'
@@ -85,7 +90,7 @@ Usage: tit rm [type] [item] [subitem]
         if command['item'].isdigit():
             _tit.current_list.rm(rm_id=int(command['item']))
         else:
-            _tit.current_list.rm(rm_name=command['item'])
+            _tit.current_list.rm(rm_name=command['item'].decode('utf-8'))
 
         print 'Item removed'
         print format_output(_tit.current_list.list(finished=options.finished))
@@ -95,12 +100,12 @@ Usage: tit rm [type] [item] [subitem]
         if command['item'].isdigit():
             i = _tit.current_list.find(id=int(command['item']))
         else:
-            i = _tit.current_list.find(name=command['item'])
+            i = _tit.current_list.find(name=command['item'].decode('utf-8'))
 
         if command['subitem'].isdigit() and i:
             i.rm(rm_id=int(command['subitem']))
         elif i:
-            i.rm(rm_text=command['subitem'])
+            i.rm(rm_text=command['subitem'].decode('utf-8'))
 
         print 'Comment removed'
         print format_output(_tit.current_list.list(finished=options.finished))
@@ -110,7 +115,7 @@ Usage: tit rm [type] [item] [subitem]
         if command['item'].isdigit():
             l = _tit.find(id=int(command['item']))
         else:
-            l = _tit.find(name=command['item'])
+            l = _tit.find(name=command['item'].decode('utf-8'))
 
         if l == _tit.current_list:
             _tit.current_list = None or _tit.lists[0]
@@ -130,7 +135,7 @@ Usage: tit switch [list]
     if command['list'].isdigit():
         _tit.current_list = _tit.find(id=command['list'])
     else:
-        _tit.current_list = _tit.find(name=command['list'])
+        _tit.current_list = _tit.find(name=command['list'].decode('utf-8'))
 
     if _tit.current_list is None:
         print 'Error finding list'
@@ -152,9 +157,9 @@ Usage: tit change [type] [item] [subitem] [value]
     # tit change item [item] [value]
     if command['type'] == 'item' or command['type'] == 'i':
         if command['item'].isdigit():
-            _tit.current_list.change(command['subitem'], ch_id=int(command['item']))
+            _tit.current_list.change(command['subitem'].decode('utf-8'), ch_id=int(command['item']))
         else:
-            _tit.current_list.change(command['subitem'], ch_name=command['item'])
+            _tit.current_list.change(command['subitem'].decode('utf-8'), ch_name=command['item'].decode('utf-8'))
 
         print 'Item changed'
         print format_output(_tit.current_list.list(finished=options.finished))
@@ -163,7 +168,7 @@ Usage: tit change [type] [item] [subitem] [value]
         if command['item'].isdigit():
             _tit.current_list.find(id=int(command['item'])).priority = int(command['subitem'])
         else:
-            _tit.current_list.find(name=command['item']).priority = int(command['subitem'])
+            _tit.current_list.find(name=command['item'].decode('utf-8')).priority = int(command['subitem'])
 
         print 'Priority changed'
         print format_output(_tit.current_list.list(finished=options.finished))
@@ -173,14 +178,14 @@ Usage: tit change [type] [item] [subitem] [value]
         if command['item'].isdigit():
             i = _tit.current_list.find(id=int(command['item']))
         else:
-            i = _tit.current_list.find(name=command['item'])
+            i = _tit.current_list.find(name=command['item'].decode('utf-8'))
 
         if i is not None:
             if command['subitem'].isdigit():
                 i.change(command['value'], ch_id=int(command['subitem']))
             else:
                 print "command['subitem'] is not a digit"
-                i.change(command['value'], ch_text=command['subitem'])
+                i.change(command['value'], ch_text=command['subitem'].decode('utf-8'))
 
         print 'Comment changed'
         print format_output(_tit.current_list.list(finished=options.finished))
@@ -189,16 +194,16 @@ Usage: tit change [type] [item] [subitem] [value]
         if command['item'].isdigit():
             _tit.change(command['subitem'], ch_id=int(command['item']))
         else:
-            _tit.change(command['subitem'], ch_name=command['item'])
+            _tit.change(command['subitem'], ch_name=command['item'].decode('utf-8'))
 
         print 'List changed'
         print format_output(_tit.list(finished=options.finished))
     # tit change description [list] [value]
     if command['type'] == 'list' or command['type'] == 'd':
         if command['item'].isdigit():
-            _tit.find(id=int(command['item'])).description = command['subitem']
+            _tit.find(id=int(command['item'])).description = command['subitem'].decode('utf-8')
         else:
-            _tit.change(name=command['item']).description = command['subitem']
+            _tit.change(name=command['item']).description = command['subitem'].decode('utf-8')
 
         print 'Description changed'
         print format_output(_tit.list(finished=options.finished))
@@ -211,10 +216,9 @@ Usage: tit start [item]
     tit start help                               -- displays this helpful text"""
 
     if command['item'].isdigit():
-        print 'tit: 1', _tit.current_list, _tit.current_list.find(id=int(command['item']))
         _tit.current_list.find(id=int(command['item'])).start()
     else:
-        _tit.current_list.find(name=command['item']).start()
+        _tit.current_list.find(name=command['item'].decode('utf-8')).start()
 
     _tit.save(filename=options.file)
     print format_output(_tit.current_list.list(finished=options.finished))
@@ -227,7 +231,7 @@ Usage: tit pause [item]
     if command['item'].isdigit():
         _tit.current_list.find(id=int(command['item'])).pause()
     else:
-        _tit.current_list.find(name=command['item']).puase()
+        _tit.current_list.find(name=command['item'].decode('utf-8')).puase()
 
     _tit.save(filename=options.file)
     print format_output(_tit.current_list.list(finished=options.finished))
@@ -240,7 +244,7 @@ Usage: tit pause [item]
     if command['item'].isdigit():
         _tit.current_list.find(id=int(command['item'])).finish()
     else:
-        _tit.current_list.find(name=command['item']).finish()
+        _tit.current_list.find(name=command['item'].decode('utf-8')).finish()
 
     _tit.save(filename=options.file)
     print format_output(_tit.current_list.list(finished=options.finished))
@@ -357,6 +361,8 @@ def main():
         _tit = tit.load(options.file)
     else:
         _tit = tit.load()
+
+    #_tit = pickle.loads('%s_serial' % options.file)
 
     if _tit.current_list is None:
         print 'No lists found, only list creation command supported'
