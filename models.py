@@ -42,9 +42,9 @@ class tit:
         """ Loads the todo list from the default location or from 
         the specified filename """
         if not filename:
-            filename = '%s/.tit/data.xml' % os.getenv('HOME')
+            filename = '%s/.tit/data.py' % os.getenv('HOME')
 
-        file = codecs.open('%s_py' % filename, encoding='utf-8', mode='r')
+        file = codecs.open(filename, encoding='utf-8', mode='r')
         f = file.read()
         file.close()
 
@@ -54,9 +54,9 @@ class tit:
 
     def save(self, filename=None):
         if not filename:
-            filename = '%s/.tit/data.xml' % os.getenv('HOME')
+            filename = '%s/.tit/data.py' % os.getenv('HOME')
 
-        file = codecs.open('%s_py' % filename, encoding='utf-8', mode='w')
+        file = codecs.open(filename, encoding='utf-8', mode='w')
         file.write(self.toPy())
         file.close()
 
@@ -288,6 +288,11 @@ class item:
         return python
 
     def __unicode__(self):
+        time_elapsed = self.total_time
+
+        if len(self.log) and self.log[-1].type == 'start':
+            time_elapsed += datetime.now() - self.log[-1].time
+
         if not self.finished:
             return '$ID#%s$CLEAR ' \
                     '$%sITEM-%s-$CLEAR ' \
@@ -296,14 +301,14 @@ class item:
                     (self.id, \
                     self.priority, \
                     self.priority, \
-                    str(self.total_time).split('.')[0], \
+                    str(time_elapsed).split('.')[0], \
                     '$CURRENT' if self.current else '', \
                     self.name)
         else:
             return '$FINISHED#%s -%s- %s %s$CLEAR' % \
                     (self.id, \
                     self.priority, \
-                    str(self.total_time).split('.')[0], \
+                    str(time_elapsed).split('.')[0], \
                     self.name)
 
     def sort(self):
