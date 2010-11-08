@@ -332,7 +332,7 @@ _formatting = {
     '$CLEAR':    '\033[0m',
     '$INFO':     '\033[0;%dm' % _term_col['yellow'],
     '$ID':       '\033[1;%dm' % _term_col['cyan'],
-    '$LIST':     '\033[0;%dm\033[1;4m' % _term_col['green'],
+    '$LIST':     '\033[1;%dm' % _term_col['green'],
     '$0ITEM':    '\033[0;%dm' % _term_col['green'],
     '$1ITEM':    '\033[0;%dm' % _term_col['green'],
     '$2ITEM':    '\033[0;%dm' % _term_col['white'],
