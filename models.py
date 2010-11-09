@@ -167,7 +167,13 @@ class list:
         if current:
             output_string.append(u'$INFO---------- CURRENT ----------$CLEAR')
 
-        output_string.append(u'$ID#%s$CLEAR $LIST%s$CLEAR %s' % (self.id, self.name, self.description))
+        output_string.append(u'%s%s%s%s%s' % \
+                ('$ID#%s$CLEAR ' % self.id, \
+                 '$LIST%s$CLEAR ' % self.name, \
+                 '$TIME%s$CLEAR ' % str(self.time()).split('.')[0], \
+                 '$FINISHED%s$CLEAR ' % str(self.time(show_finished=True)) \
+                     .split('.')[0], \
+                 self.description))
 
         for item in self.find(key=lambda i: not i.finished or finished):
             output_string.append(u'\t%s' % item.__unicode__())
@@ -232,6 +238,22 @@ class list:
             self.change(value, ch_item=self.find(name=ch_name))
         elif ch_id is not None:
             self.change(value, ch_item=self.find(id=ch_id))
+
+    def time(self, show_finished=False):
+        """ This method calculates the total time spent on items on the list """
+        total_time = timedelta(minutes=0)
+
+        for item in self.items:
+            if item.total_time is not None and \
+                    not (item.finished and not show_finished):
+                total_time += item.total_time
+
+            if item.current and \
+                    not (item.finished and not show_finished):
+                total_time += datetime.now() - item.log[-1].time
+
+        return total_time
+
 
 class item:
     """ This class defines todo list items """
