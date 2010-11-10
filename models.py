@@ -450,7 +450,7 @@ class log_item:
     def toPy(self):
         python =  u"log_item(u'%s', " \
                   u"time=datetime.strptime(u'%s', " %\
-                  (self.type, self.time.isoformat())
-        python += u"'%Y-%m-%dT%H:%M:%S.%f'))"
+                  (self.type, self.time.isoformat().split('.')[0])
+        python += u"'%Y-%m-%dT%H:%M:%S'))"
 
         return python
